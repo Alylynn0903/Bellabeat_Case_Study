@@ -1,0 +1,274 @@
+---
+title: "Bellabeat Case Study"
+author: "Alysha Hall"
+date: "2024-05-06"
+output: md_document
+---
+
+![](Bellabeat-logo.webp)
+
+Bellabeat is a high tech company that manufactures health-focused smart products for women. Since launching in 2013 they have grown rapidly and quickly positioned themselves to become a large player in global smart devices. Urška Sršen, Co-founder and Chief Creative Officer of Bellabeat wants an analyst on the data that is received from other smart devices to help unlock new growth opportunities for the company.
+
+
+### **Questins for the Analyst**
+
+1. What are some trends in smart device usage?
+2. How could these trends apply to Bellabeat customers?
+3. How could these trends help influence Bellabeat marketing strategy
+
+
+### **Business Task**
+
+To identify growth opportunities for Bellabeat to improves marketing strategies to keep up with trends in smart device usage.
+
+
+### **Loading Packages**
+
+```{r loading packages}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+
+### **Importing Files**
+
+For this case study I will be using the data provided by [FitBit Fitness Tracker](https://www.kaggle.com/datasets/arashnic/fitbit)
+
+```{r}
+activity <- read_csv("C:/Users/crazz/Desktop/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
+calories <- read_csv("C:/Users/crazz/Desktop/Fitabase Data 4.12.16-5.12.16/dailyCalories_merged.csv")
+intensities <- read.csv("C:/Users/crazz/Desktop/Fitabase Data 4.12.16-5.12.16/hourlyIntensities_merged.csv")
+sleep <- read_csv("C:/Users/crazz/Desktop/Fitabase Data 4.12.16-5.12.16/sleepDay_merged.csv")
+weight <- read_csv("C:/Users/crazz/Desktop/Fitabase Data 4.12.16-5.12.16/weightLogInfo_merged.csv")
+steps <- read_csv("C:/Users/crazz/Desktop/Fitabase Data 4.12.16-5.12.16/hourlySteps_merged.csv")
+```
+### **Exploring the data**
+
+```{r activity}
+head(activity)
+```
+```{r Calories}
+head(calories)
+```
+
+```{r}
+head(sleep)
+```
+
+```{r}
+head(intensities)
+```
+
+```{r}
+head(steps)
+```
+
+### **Fixing Format**
+
+I went through the data sets and realized the dates were inconsistent, some were written as chr format and not date format. I went through and converted all the dates to be the same and split the date and time in the sleep clart. 
+
+```{r}
+str(activity)
+```
+
+```{r}
+str(calories)
+```
+
+```{r}
+str(calories)
+```
+
+```{r}
+str(intensities)
+```
+
+
+```{r}
+str(sleep)
+```
+```{r}
+str(weight)
+```
+
+```{r}
+str(steps)
+```
+
+
+```{r}
+#activity
+activity_cleaned <- activity %>% 
+  rename(Date = ActivityDate) %>% 
+  mutate(Date = as.Date(Date, format = "%m/%d/%y")) %>%
+  rename_with(tolower)
+```
+
+```{r}
+#calories
+calories_cleaned <- calories %>% 
+  rename(Date = ActivityDay) %>% 
+  mutate(Date = as.Date(Date, format = "%m/%d/%y"))%>%
+  rename_with(tolower)
+```
+
+
+```{r}
+#sleep
+sleep_cleaned <- sleep %>% 
+  rename(Date = SleepDay) %>% 
+  mutate(Date = as.Date(Date, format = "%m/%d/%y"))%>%
+  rename_with(tolower)
+```
+
+
+```{r eval=FALSE, include=FALSE}
+#weight
+weight_cleaned <- weight %>%
+  rename(Date = Date) %>%
+  mutate(Date = as.Date(Date, format = "%m,$d,$y,"))%>%
+  rename_with(tolower)
+```
+
+```{r include=FALSE}
+#intensities
+intensityies_cleaned <- intensities %>% 
+  rename(Date = ActivityHour) %>% 
+  mutate(Date = as.Date(Date, format = "%m/%d/%y"))
+intensities$time <- format(intensities$ActivityHour, format = "%H:%M:%S")
+intensities$date <- format(intensities$ActivityHour, format = "%m/%d/%y")
+```
+
+
+```{r}
+#steps
+steps_cleaned <-steps %>%
+  rename(Date = ActivityHour) %>% 
+  mutate(Date = as.Date(Date, format = "%m/%d/%y"))%>%
+  rename_with(tolower)
+steps$time <- format(steps$ActivityHour, format = "%H:%M:%S")
+steps$date <- format(steps$ActivityHour, format = "%m/%d/%y")
+```
+
+### **Exploring and Summarizing Data**
+
+```{r}
+n_distinct(activity$Id)
+n_distinct(calories$Id)
+n_distinct(intensities$Id)
+n_distinct(sleep$Id)
+n_distinct(weight$Id)
+n_distinct(steps$Id)
+```
+
+Running this code allows us to get a number of how many participate IDs are recorded in each data set. 
+
+33 participants were record for activity, calories, steps, and intensities. 
+
+24 participants recorded their sleep records.
+
+Only 8 participants recorded their weight. 
+
+```{r}
+# activity
+activity %>%  
+  select(TotalSteps,
+         TotalDistance,
+         SedentaryMinutes, Calories) %>%
+  summary()
+
+# explore num of active minutes per category
+activity %>%
+  select(VeryActiveMinutes, FairlyActiveMinutes, LightlyActiveMinutes) %>%
+  summary()
+
+# calories
+calories %>%
+  select(Calories) %>%
+  summary()
+# sleep
+sleep %>%
+  select(TotalSleepRecords, TotalMinutesAsleep, TotalTimeInBed) %>%
+  summary()
+# weight
+weight %>%
+  select(WeightKg, BMI) %>%
+  summary()
+```
+
+Most participants do little moving, averaging around 16 hours, and are lightly active.
+
+The average amount of sleep everyone gets in a night is about 7 hours.
+
+The average amount of steps a person per day is 7,638 steps which is a little below the average goal of 8,000 per day. 
+
+
+### **Merging Data for Further Analysist**
+
+
+I decided to merge the sleep and activity tables together as they go hand in hand. If you do not get a good amount of sleep it hinders how much activity you want to do during the next day. The relationship between sedentary minutes and steps taken are a very imprtant key. 
+
+```{r}
+activity_sleep <- merge(sleep_cleaned, activity_cleaned, by=c("id", "date"))
+```
+
+```{r}
+head(activity_sleep)
+```
+
+```{r}
+activity2 <- activity_cleaned %>% 
+  mutate(totalactiveminutes = veryactiveminutes + fairlyactiveminutes + lightlyactiveminutes)
+```
+
+### **Visualizing the Data**
+
+
+```{r}
+ggplot(data = activity_cleaned, aes(x=totalsteps, y=calories)) + geom_point()  +
+  geom_smooth(method = "loess") +
+  geom_smooth() + 
+  labs(title = "Total Steps vs Calories Burn", x = "Total Steps", y = "Calories")+
+  theme(plot.title = element_text(size=12), text = element_text(size=10))
+```
+
+
+It is clear that you can see a positive correlation in this graph. The more steps a person takes the more calories they burn. 
+
+
+```{r}
+ggplot(data=sleep, aes(x=TotalMinutesAsleep, y=TotalTimeInBed)) + 
+  geom_point()+ 
+  labs(title="Total Minutes Asleep vs. Total Time in Bed", x= "Minutes Asleep", y= "Time in Bed")+
+  theme(plot.title = element_text(size=12), text = element_text(size=10))
+```
+
+The relationship between time spent in bed and time spent asleep in pretty linear. **Bellabeat could improve participants sleep habits by setting reminders for them to go to sleep. Another option Bellabeat could do is track and find a correlation in a persons sleep habit and predict the best time and amount of sleep a person needs a night to bed function. Some people function better sleeping 5-6 hours a night while others need 8-10 hours a night.**
+
+
+```{r}
+ggplot(data=activity_sleep, aes(x=totalminutesasleep, y=sedentaryminutes)) + 
+geom_point() + geom_smooth() +
+  labs(title="Minutes Asleep vs. Sedentary Minutes", x= "Minutes Asleep", y="Sedentary Minutes")+
+  theme(plot.title = element_text(size=12), text = element_text(size=10))
+```
+
+Here it is shown that there is a negative relationship between Sleep Time and Sedentary Minutes. Although we can not fully say that this little sleep is the cause of Sedentary minutes but it sure has an effect on it.
+
+
+```{r}
+ggplot(activity2, aes(x= totalactiveminutes, y=calories))+
+  geom_point()+
+  geom_smooth()+
+  labs(title="Daily Activity vs. Calories Burned", x= "Active Minutes", y="Calories Burned")+
+  theme(plot.title = element_text(size=12), text = element_text(size=10))
+```
+
+### **Summary**
+
+Bellabeat is on the rise to becoming one of the top fitness trackers, since being founded in 2013, for womens health. They developed a product for woman, focusing on woman, to help with the day to day activity. Bellabeat has helped millions of wome become more in tune with their body as they go through cycles and even pregnancies. Being a company that focuses on how a womans body responds to those certain milestones has the ability to make a huge impact. 
+
+After analyzing the [FitBit Fitness Tracker Data](https://www.kaggle.com/datasets/arashnic/fitbit) some things stood out that would influence Bellabeats marketing team. 
+
+With not knowing the participants of this study, whether they are male or female, the data still shows that not a lot of people are moving during the day. The participants either have jobs where they have to sit all day at a computer or in meetings, or even since Bellabeat is a woman based company, lets not forget about the stay-at-home parents taking care of kids all day. There is the simple day to day movements but nothing allowing a fully healthy lifestyle. 
